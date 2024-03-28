@@ -3,12 +3,33 @@ on:
   push:
     branches: ['master']
   workflow_dispatch: {}
-jobs:
-  checkout-test:
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+jobs: test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./.github/scripts
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+    - run: ./prepare.sh
+    - run: ./test.sh
+  build-and-push-image:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - uses: actions/setup-node@v1
-      - run: ./.github/scripts/prepare.sh
-      - run: ./.github/scripts/test.sh
+      - name: Log in to the Container registry
+        uses: docker/login-action@releases/v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@releases/v4
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
